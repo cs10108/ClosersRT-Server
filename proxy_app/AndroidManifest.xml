@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.closersrt.server"
+    android:versionCode="20261114"
+    android:versionName="20261114">
+
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!--
+      Needed to write the game's account slot back to its fixed default state.
+
+      The save lives in ANOTHER app's external directory,
+      /sdcard/Android/data/com.naddicgames.projectm/files/SaveGames/.  On the
+      Android 9 test image the file is group-owned by sdcard_rw with group write,
+      so holding WRITE_EXTERNAL_STORAGE is what allows the restore to happen at
+      all; without it the write fails with "(Permission denied)".
+    -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
+        android:extractNativeLibs="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:hardwareAccelerated="false"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name=".ContentZipProvider"
+            android:authorities="com.closersrt.proxy.contentzip"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+
+        <!--
+          Language pack hand-off.  The game is a different app, and on Android
+          11+ FUSE blocks raw-path reads of another app's external files, so the
+          pack and the selected language are served through a provider instead.
+          Exported on purpose: the surface is two read-only URIs and the game
+          needs no storage permission.
+        -->
+        <provider
+            android:name=".LangProvider"
+            android:authorities="com.closersrt.proxy.lang"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+
+        <!-- The VPN service that captures the game's traffic. -->
+        <service
+            android:name=".ProxyVpnService"
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:foregroundServiceType="specialUse">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <!-- Keeps web 8080 / game 8500 / patch 8443 answering while the
+             activity is backgrounded.  Without this the OS freezes the
+             process and the game's libcurl times out on 127.0.0.1:8443. -->
+        <service
+            android:name=".ServerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+
+    </application>
+</manifest>
